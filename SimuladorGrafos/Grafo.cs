@@ -17,9 +17,14 @@ namespace SimuladorGrafos
         /// Constructor: Inicializa grafo con n nodos y los botones asociados
         public Grafo(int n, List<Button> botones)
         {
+            if (n < 0)
+                throw new ArgumentOutOfRangeException(nameof(n), n, "El número de nodos no puede ser negativo.");
+
             numNodos = n;
             listaAdj = new List<List<int>>();
-            nodosButtons = botones;
+            // Un grafo puede crearse sin botones asociados (p. ej. en pruebas unitarias);
+            // en ese caso simplemente no se colorea ningún nodo.
+            nodosButtons = botones ?? new List<Button>();
 
             // Inicializar la lista de adyacencia
             for (int i = 0; i < n; i++)
@@ -28,9 +33,27 @@ namespace SimuladorGrafos
             }
         }
 
+        /// Número de nodos del grafo.
+        public int NumNodos => numNodos;
+
+        /// Valida que el índice de nodo exista en el grafo; lanza una excepción clara si no.
+        private void ValidarNodo(int nodo, string nombreParametro)
+        {
+            if (nodo < 0 || nodo >= numNodos)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nombreParametro,
+                    nodo,
+                    $"El nodo {nodo} no existe. El grafo tiene {numNodos} nodo(s) (índices válidos: 0 a {numNodos - 1}).");
+            }
+        }
+
         /// Agrega arista entre nodos u y v (grafo no dirigido)
         public void AgregarArista(int u, int v)
         {
+            ValidarNodo(u, nameof(u));
+            ValidarNodo(v, nameof(v));
+
             // Grafo no dirigido: agregamos en ambas direcciones
             listaAdj[u].Add(v);
             listaAdj[v].Add(u);
@@ -39,6 +62,7 @@ namespace SimuladorGrafos
         /// Retorna lista de vecinos de un nodo
         public List<int> ObtenerVecinos(int nodo)
         {
+            ValidarNodo(nodo, nameof(nodo));
             return new List<int>(listaAdj[nodo]);
         }
 
@@ -48,6 +72,14 @@ namespace SimuladorGrafos
         public string BFS(int inicio)
         {
             StringBuilder resultado = new StringBuilder();
+
+            if (numNodos == 0)
+            {
+                resultado.AppendLine("El grafo está vacío. No hay nodos para recorrer.");
+                return resultado.ToString();
+            }
+
+            ValidarNodo(inicio, nameof(inicio));
 
             // Marcamos todos los nodos como no visitados
             bool[] visitado = new bool[numNodos];
@@ -111,6 +143,14 @@ namespace SimuladorGrafos
         public string DFS(int inicio)
         {
             StringBuilder resultado = new StringBuilder();
+
+            if (numNodos == 0)
+            {
+                resultado.AppendLine("El grafo está vacío. No hay nodos para recorrer.");
+                return resultado.ToString();
+            }
+
+            ValidarNodo(inicio, nameof(inicio));
 
             // Marcamos todos los nodos como no visitados
             bool[] visitado = new bool[numNodos];
@@ -178,6 +218,15 @@ namespace SimuladorGrafos
         public string DFSRecursivo(int inicio)
         {
             StringBuilder resultado = new StringBuilder();
+
+            if (numNodos == 0)
+            {
+                resultado.AppendLine("El grafo está vacío. No hay nodos para recorrer.");
+                return resultado.ToString();
+            }
+
+            ValidarNodo(inicio, nameof(inicio));
+
             bool[] visitado = new bool[numNodos];
 
             resultado.AppendLine($"Iniciando DFS Recursivo desde el nodo {inicio}");
