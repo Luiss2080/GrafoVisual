@@ -1,0 +1,33 @@
+name: Build y pruebas
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    # SimuladorGrafos es una app WinForms sobre .NET Framework 4.7.2, así que
+    # necesitamos un runner Windows con las herramientas de compilación de
+    # .NET Framework disponibles (windows-latest las trae preinstaladas).
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurar dependencias
+        run: dotnet restore SimuladorGrafos.sln
+
+      - name: Compilar la solución (app + pruebas)
+        run: dotnet build SimuladorGrafos.sln --configuration Release --no-restore
+
+      - name: Ejecutar pruebas unitarias
+        run: dotnet test SimuladorGrafos.Tests/SimuladorGrafos.Tests.csproj --configuration Release --no-build --logger "console;verbosity=normal"
