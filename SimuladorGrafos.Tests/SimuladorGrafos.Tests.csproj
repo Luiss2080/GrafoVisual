@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SimuladorGrafos\SimuladorGrafos.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Grafo expone List<Button> en su constructor, así que el proyecto de
+         pruebas necesita conocer el tipo, aunque en las pruebas siempre se
+         pase null (no hay UI real). -->
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>
