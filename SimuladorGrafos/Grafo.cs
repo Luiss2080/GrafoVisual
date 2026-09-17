@@ -80,9 +80,57 @@ namespace SimuladorGrafos
             return new List<int>(listaAdj[nodo]);
         }
 
-        /// BFS: Recorrido en anchura desde nodo inicial
+        /// Núcleo del recorrido BFS, sin efectos de UI ni pausas: es la única fuente de
+        /// verdad del algoritmo. Tanto BFS() (usado por la interfaz gráfica) como
+        /// BFSOrden() (usado por las pruebas unitarias y por código que solo necesita el
+        /// resultado) llaman a este método, así que no pueden divergir entre sí.
+        /// - alVisitar(nodo): se invoca cuando un nodo se extrae de la cola (orden de visita).
+        /// - alDescubrir(vecino, origen): se invoca cuando un vecino no visitado se encola.
+        private void RecorrerBFS(int inicio, Action<int> alVisitar, Action<int, int> alDescubrir)
+        {
+            bool[] visitado = new bool[numNodos];
+            Queue<int> cola = new Queue<int>();
+
+            visitado[inicio] = true;
+            cola.Enqueue(inicio);
+
+            while (cola.Count > 0)
+            {
+                int nodoActual = cola.Dequeue();
+                alVisitar?.Invoke(nodoActual);
+
+                foreach (int vecino in listaAdj[nodoActual])
+                {
+                    if (!visitado[vecino])
+                    {
+                        visitado[vecino] = true;
+                        cola.Enqueue(vecino);
+                        alDescubrir?.Invoke(vecino, nodoActual);
+                    }
+                }
+            }
+        }
+
+        /// Orden de visita BFS puro (sin UI, sin pausas): útil para pruebas unitarias y
+        /// para cualquier consumidor que solo necesite el resultado del algoritmo.
+        /// - En un grafo desconectado, solo devuelve los nodos alcanzables desde `inicio`.
+        /// - En un grafo con ciclos, el arreglo de visitados evita bucles infinitos.
+        public List<int> BFSOrden(int inicio)
+        {
+            var orden = new List<int>();
+            if (numNodos == 0)
+                return orden;
+
+            ValidarNodo(inicio, nameof(inicio));
+            RecorrerBFS(inicio, nodo => orden.Add(nodo), null);
+            return orden;
+        }
+
+        /// BFS: Recorrido en anchura desde nodo inicial, con visualización en la UI.
         /// - Usa cola para procesar nodos en orden FIFO
         /// - Visita todos los vecinos inmediatos antes de avanzar al siguiente nivel
+        /// - Encuentra el camino más corto medido en número de saltos (el grafo no tiene
+        ///   pesos en las aristas), no el camino de menor "costo" en un grafo ponderado.
         public string BFS(int inicio)
         {
             StringBuilder resultado = new StringBuilder();
@@ -95,55 +143,25 @@ namespace SimuladorGrafos
 
             ValidarNodo(inicio, nameof(inicio));
 
-            // Marcamos todos los nodos como no visitados
-            bool[] visitado = new bool[numNodos];
-
-            // Cola para BFS
-            Queue<int> cola = new Queue<int>();
-
-            // Marcamos el nodo inicial como visitado y lo añadimos a la cola
-            visitado[inicio] = true;
-            cola.Enqueue(inicio);
-
             resultado.AppendLine($"Iniciando BFS desde el nodo {inicio}");
             resultado.Append("Orden de visita: ");
 
             int paso = 1;
-            while (cola.Count > 0)
-            {
-                // Extraer un nodo de la cola
-                int nodoActual = cola.Dequeue();
-
-                // Colorear el nodo actual
-                ColorearNodo(nodoActual, Color.LightGreen);
-
-                // Imprimir el nodo
-                resultado.Append($"{nodoActual} ");
-
-                // Esperar un poco para visualizar el proceso
-                System.Threading.Thread.Sleep(500);
-
-                // Buscar todos los nodos adyacentes no visitados
-                foreach (int vecino in listaAdj[nodoActual])
+            RecorrerBFS(
+                inicio,
+                alVisitar: nodoActual =>
                 {
-                    if (!visitado[vecino])
-                    {
-                        // Marcar como visitado y añadir a la cola
-                        visitado[vecino] = true;
-                        cola.Enqueue(vecino);
-
-                        // Colorear el vecino
-                        ColorearNodo(vecino, Color.Yellow);
-
-                        // Mostrar paso actual
-                        resultado.AppendLine();
-                        resultado.AppendLine($"Paso {paso++}: Visitando vecino {vecino} del nodo {nodoActual}");
-
-                        // Esperar para visualizar
-                        System.Threading.Thread.Sleep(300);
-                    }
-                }
-            }
+                    ColorearNodo(nodoActual, Color.LightGreen);
+                    resultado.Append($"{nodoActual} ");
+                    System.Threading.Thread.Sleep(500);
+                },
+                alDescubrir: (vecino, nodoActual) =>
+                {
+                    ColorearNodo(vecino, Color.Yellow);
+                    resultado.AppendLine();
+                    resultado.AppendLine($"Paso {paso++}: Visitando vecino {vecino} del nodo {nodoActual}");
+                    System.Threading.Thread.Sleep(300);
+                });
 
             resultado.AppendLine();
             resultado.AppendLine("\nRecorrido BFS completado!");
@@ -151,7 +169,59 @@ namespace SimuladorGrafos
             return resultado.ToString();
         }
 
-        /// DFS: Recorrido en profundidad iterativo
+        /// Núcleo del recorrido DFS iterativo, sin efectos de UI ni pausas. DFS() y
+        /// DFSOrden() llaman a este mismo método para que ambos no puedan divergir.
+        /// - alVisitar(nodo): se invoca cuando un nodo se marca como visitado (al desapilarlo).
+        /// - alApilar(vecino, origen): se invoca cuando un vecino no visitado se apila.
+        private void RecorrerDFS(int inicio, Action<int> alVisitar, Action<int, int> alApilar)
+        {
+            bool[] visitado = new bool[numNodos];
+            Stack<int> pila = new Stack<int>();
+
+            pila.Push(inicio);
+
+            while (pila.Count > 0)
+            {
+                int nodoActual = pila.Pop();
+
+                // Un nodo puede haber sido apilado más de una vez (p. ej. si dos nodos ya
+                // visitados comparten un vecino), por eso el chequeo de visitado se hace
+                // aquí, al desapilar, y no al apilar. Esto es lo que evita bucles
+                // infinitos en grafos cíclicos.
+                if (!visitado[nodoActual])
+                {
+                    visitado[nodoActual] = true;
+                    alVisitar?.Invoke(nodoActual);
+
+                    // Añadir vecinos en orden inverso para que el recorrido sea similar al DFS recursivo
+                    List<int> vecinos = new List<int>(listaAdj[nodoActual]);
+                    vecinos.Reverse();
+
+                    foreach (int vecino in vecinos)
+                    {
+                        if (!visitado[vecino])
+                        {
+                            pila.Push(vecino);
+                            alApilar?.Invoke(vecino, nodoActual);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// Orden de visita DFS iterativo puro (sin UI, sin pausas).
+        public List<int> DFSOrden(int inicio)
+        {
+            var orden = new List<int>();
+            if (numNodos == 0)
+                return orden;
+
+            ValidarNodo(inicio, nameof(inicio));
+            RecorrerDFS(inicio, nodo => orden.Add(nodo), null);
+            return orden;
+        }
+
+        /// DFS: Recorrido en profundidad iterativo, con visualización en la UI.
         /// - Usa pila para explorar caminos completos antes de retroceder
         /// - Visita cada rama hasta el final antes de explorar otras ramas
         public string DFS(int inicio)
@@ -166,60 +236,25 @@ namespace SimuladorGrafos
 
             ValidarNodo(inicio, nameof(inicio));
 
-            // Marcamos todos los nodos como no visitados
-            bool[] visitado = new bool[numNodos];
-
-            // Pila para DFS
-            Stack<int> pila = new Stack<int>();
-
-            // Añadimos el nodo inicial a la pila
-            pila.Push(inicio);
-
             resultado.AppendLine($"Iniciando DFS desde el nodo {inicio}");
             resultado.Append("Orden de visita: ");
 
             int paso = 1;
-            while (pila.Count > 0)
-            {
-                // Extraer un nodo de la pila
-                int nodoActual = pila.Pop();
-
-                // Si el nodo no ha sido visitado
-                if (!visitado[nodoActual])
+            RecorrerDFS(
+                inicio,
+                alVisitar: nodoActual =>
                 {
-                    // Marcar el nodo como visitado e imprimir
-                    visitado[nodoActual] = true;
                     resultado.Append($"{nodoActual} ");
-
-                    // Colorear el nodo actual
                     ColorearNodo(nodoActual, Color.LightCoral);
-
-                    // Esperar un poco para visualizar el proceso
                     System.Threading.Thread.Sleep(500);
-
-                    // Añadir vecinos en orden inverso
-                    List<int> vecinos = new List<int>(listaAdj[nodoActual]);
-                    vecinos.Reverse(); // Para que el recorrido sea similar al DFS recursivo
-
-                    foreach (int vecino in vecinos)
-                    {
-                        if (!visitado[vecino])
-                        {
-                            pila.Push(vecino);
-
-                            // Colorear el vecino
-                            ColorearNodo(vecino, Color.LightBlue);
-
-                            // Mostrar paso actual
-                            resultado.AppendLine();
-                            resultado.AppendLine($"Paso {paso++}: Añadiendo vecino {vecino} del nodo {nodoActual} a la pila");
-
-                            // Esperar para visualizar
-                            System.Threading.Thread.Sleep(300);
-                        }
-                    }
-                }
-            }
+                },
+                alApilar: (vecino, nodoActual) =>
+                {
+                    ColorearNodo(vecino, Color.LightBlue);
+                    resultado.AppendLine();
+                    resultado.AppendLine($"Paso {paso++}: Añadiendo vecino {vecino} del nodo {nodoActual} a la pila");
+                    System.Threading.Thread.Sleep(300);
+                });
 
             resultado.AppendLine();
             resultado.AppendLine("\nRecorrido DFS completado!");
@@ -227,7 +262,39 @@ namespace SimuladorGrafos
             return resultado.ToString();
         }
 
-        /// DFS Recursivo: Implementación alternativa que usa la pila de llamadas
+        /// Núcleo del recorrido DFS recursivo, sin efectos de UI ni pausas. DFSRecursivo()
+        /// y DFSOrdenRecursivo() llaman a este mismo método para que ambos no puedan
+        /// divergir.
+        private void RecorrerDFSRecursivo(int nodo, bool[] visitado, Action<int> alVisitar, Action<int, int> alDescubrir)
+        {
+            visitado[nodo] = true;
+            alVisitar?.Invoke(nodo);
+
+            foreach (int vecino in listaAdj[nodo])
+            {
+                if (!visitado[vecino])
+                {
+                    alDescubrir?.Invoke(vecino, nodo);
+                    RecorrerDFSRecursivo(vecino, visitado, alVisitar, alDescubrir);
+                }
+            }
+        }
+
+        /// Orden de visita DFS recursivo puro (sin UI, sin pausas).
+        public List<int> DFSOrdenRecursivo(int inicio)
+        {
+            var orden = new List<int>();
+            if (numNodos == 0)
+                return orden;
+
+            ValidarNodo(inicio, nameof(inicio));
+            bool[] visitado = new bool[numNodos];
+            RecorrerDFSRecursivo(inicio, visitado, nodo => orden.Add(nodo), null);
+            return orden;
+        }
+
+        /// DFS Recursivo: Implementación alternativa que usa la pila de llamadas, con
+        /// visualización en la UI.
         /// - Más natural para mostrar la recursividad del algoritmo
         public string DFSRecursivo(int inicio)
         {
@@ -241,55 +308,32 @@ namespace SimuladorGrafos
 
             ValidarNodo(inicio, nameof(inicio));
 
-            bool[] visitado = new bool[numNodos];
-
             resultado.AppendLine($"Iniciando DFS Recursivo desde el nodo {inicio}");
             resultado.Append("Orden de visita: ");
 
-            // Llamada al método auxiliar recursivo
-            DFSRecursivoUtil(inicio, visitado, resultado, 1);
+            bool[] visitado = new bool[numNodos];
+            int paso = 1;
+            RecorrerDFSRecursivo(
+                inicio,
+                visitado,
+                alVisitar: nodo =>
+                {
+                    resultado.Append($"{nodo} ");
+                    ColorearNodo(nodo, Color.LightCoral);
+                    System.Threading.Thread.Sleep(500);
+                },
+                alDescubrir: (vecino, nodo) =>
+                {
+                    ColorearNodo(vecino, Color.LightBlue);
+                    resultado.AppendLine();
+                    resultado.AppendLine($"Paso {paso++}: Explorando vecino {vecino} del nodo {nodo}");
+                    System.Threading.Thread.Sleep(300);
+                });
 
             resultado.AppendLine();
             resultado.AppendLine("\nRecorrido DFS Recursivo completado!");
 
             return resultado.ToString();
-        }
-
-        /// Función auxiliar que implementa la lógica recursiva del DFS
-        /// - Marca el nodo actual y explora sus vecinos recursivamente
-        private int DFSRecursivoUtil(int nodo, bool[] visitado, StringBuilder resultado, int paso)
-        {
-            // Marcar nodo como visitado
-            visitado[nodo] = true;
-            resultado.Append($"{nodo} ");
-
-            // Colorear el nodo actual
-            ColorearNodo(nodo, Color.LightCoral);
-
-            // Pausa para visualización
-            System.Threading.Thread.Sleep(500);
-
-            // Explorar vecinos no visitados
-            foreach (int vecino in listaAdj[nodo])
-            {
-                if (!visitado[vecino])
-                {
-                    // Colorear el vecino
-                    ColorearNodo(vecino, Color.LightBlue);
-
-                    // Mostrar paso
-                    resultado.AppendLine();
-                    resultado.AppendLine($"Paso {paso++}: Explorando vecino {vecino} del nodo {nodo}");
-
-                    // Pausa para visualización
-                    System.Threading.Thread.Sleep(300);
-
-                    // Llamada recursiva
-                    paso = DFSRecursivoUtil(vecino, visitado, resultado, paso);
-                }
-            }
-
-            return paso;
         }
 
         /// Actualiza el color del botón asociado al nodo para visualización
