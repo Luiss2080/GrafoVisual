@@ -1,85 +1,86 @@
-# 🕸️ Simulador de Grafos – Visualizador y Analizador de Estructuras de Grafos en C#
+# 🕸️ GrafoVisual
 
-¡Bienvenido al **Simulador de Grafos**! 🚦🔗
+> Visualizador interactivo de BFS y DFS sobre un grafo no dirigido en C# y
+> Windows Forms: pensado para estudiantes y docentes que quieren *ver*, paso a
+> paso y con colores, cómo se comportan realmente estos dos algoritmos de
+> recorrido, en vez de solo leerlos en un pizarrón.
 
-Este proyecto es una aplicación de escritorio desarrollada en **C#** con **Windows Forms** que permite crear, visualizar y analizar grafos de manera interactiva. Ideal para estudiantes, docentes y entusiastas de la teoría de grafos y algoritmos. 📊🧑‍💻
+## Características
 
----
+- **Grafo no dirigido de 20 nodos**, con una estructura jerárquica fija
+  definida en código (`Form1.InicializarGrafo`) y dibujada automáticamente al
+  iniciar la app: nodos como botones circulares y aristas como líneas (con
+  flecha en las conexiones "padre-hijo" del árbol base).
+- **BFS y DFS (iterativo) ejecutables desde cualquier nodo**, elegido con un
+  control numérico, con animación en vivo (cada nodo cambia de color al
+  visitarse) y una bitácora de texto paso a paso del recorrido.
+- **BFS encuentra el camino más corto medido en número de saltos**, no en
+  "costo" o distancia ponderada: las aristas de este grafo no tienen peso.
+  DFS explora en profundidad una rama completa antes de retroceder. Si
+  buscas rutas óptimas en un grafo con pesos reales, este proyecto no lo
+  implementa (sería un algoritmo distinto, como Dijkstra).
+- **Validación de entradas en el motor del grafo** (`Grafo.cs`): un nodo
+  inicial fuera de rango o un grafo vacío producen un error controlado en
+  vez de un `IndexOutOfRangeException`; agregar la misma arista dos veces o
+  un auto-bucle no corrompe la lista de adyacencia.
+- **Núcleo de los algoritmos separado de la interfaz gráfica**
+  (`BFSOrden`/`DFSOrden`/`DFSOrdenRecursivo`), lo que permite probarlo con
+  pruebas unitarias reales y rápidas (sin abrir ningún formulario).
 
-## 📂 Estructura del Proyecto
+### Lo que este proyecto **no** hace (para ser honestos)
 
+La estructura del grafo (20 nodos, sus aristas) está fija en el código: la
+interfaz **no** permite agregar, eliminar o editar nodos/aristas de forma
+visual, ni tiene detección de ciclos o análisis de conectividad. Si
+necesitas eso, es una extensión pendiente, no una funcionalidad actual.
+
+## Cómo usar
+
+1. Abre `SimuladorGrafos.sln` en Visual Studio (con la carga de trabajo
+   *.NET desktop development*) y presiona **F5**, o compílalo desde la
+   línea de comandos (ver más abajo) y ejecuta el `.exe` generado.
+2. Elige el **nodo inicial** con el control numérico (0 a 19).
+3. Pulsa **"Ejecutar BFS"** o **"Ejecutar DFS"** y observa cómo se colorean
+   los nodos en el orden en que el algoritmo los visita, mientras el cuadro
+   de texto de la derecha muestra el detalle paso a paso.
+
+## Instalación y uso local
+
+Requiere Windows y el SDK de .NET (el proyecto compila sobre .NET Framework
+4.7.2; Visual Studio o el SDK de .NET instalan las herramientas necesarias).
+
+```bash
+git clone https://github.com/Luiss2080/GrafoVisual.git
+cd GrafoVisual
+
+# Compilar la app y el proyecto de pruebas
+dotnet build SimuladorGrafos.sln
+
+# Ejecutar la app (WinForms; requiere Windows)
+./SimuladorGrafos/bin/Debug/SimuladorGrafos.exe
 ```
-SimuladorGrafos/
-│
-├── App.config                # ⚙️ Configuración de la aplicación
-├── Form1.cs                 # 🖼️ Lógica principal de la interfaz gráfica y eventos
-├── Form1.Designer.cs        # 🎨 Diseño visual del formulario principal
-├── Form1.resx               # 🌐 Recursos del formulario (imágenes, cadenas, etc.)
-├── Grafo.cs                 # 🧩 Lógica y estructura de datos del grafo (nodos, aristas, algoritmos)
-├── Program.cs               # 🚀 Punto de entrada de la aplicación
-├── SimuladorGrafos.csproj   # 📦 Archivo de proyecto de C#
-├── bin/                     # 🏗️ Archivos binarios generados (ejecutables)
-├── obj/                     # 🛠️ Archivos temporales de compilación
-└── Properties/              # ⚙️ Recursos y configuraciones adicionales
-    ├── AssemblyInfo.cs      # ℹ️ Información de ensamblado
-    ├── Resources.*          # 📁 Recursos de la aplicación
-    └── Settings.*           # ⚙️ Configuración de usuario
+
+## Tecnologías
+
+- **C#** sobre **.NET Framework 4.7.2** (`SimuladorGrafos.csproj`)
+- **Windows Forms** para la interfaz, con dibujo personalizado de nodos y
+  aristas mediante `System.Drawing`/GDI+
+- **xUnit** para las pruebas unitarias del motor del grafo
+- **GitHub Actions** para build y pruebas automáticas en cada cambio
+  (`.github/workflows/build-and-test.yml`)
+
+## Tests
+
+El núcleo de BFS/DFS (`Grafo.cs`) está cubierto por 21 pruebas unitarias que
+no dependen de la interfaz gráfica: grafos conectados y desconectados,
+grafos con ciclos (verificando que no haya bucles infinitos), auto-bucles,
+aristas duplicadas y casos límite (nodo inicial inválido, grafo vacío, un
+solo nodo).
+
+```bash
+dotnet test SimuladorGrafos.Tests/SimuladorGrafos.Tests.csproj
 ```
 
----
+## Licencia
 
-## 📝 Descripción de Archivos Clave
-
-- **App.config**: Configuración global de la aplicación (conexiones, parámetros).
-- **Form1.cs**: Código principal de la interfaz gráfica, manejo de eventos y lógica de interacción usuario-grafo.
-- **Form1.Designer.cs**: Define la disposición y los controles visuales del formulario.
-- **Form1.resx**: Almacena recursos como imágenes y textos utilizados en la interfaz.
-- **Grafo.cs**: Implementa la estructura de datos del grafo, incluyendo métodos para agregar nodos/aristas, recorrer el grafo y ejecutar algoritmos (BFS, DFS, etc.).
-- **Program.cs**: Inicializa y ejecuta la aplicación.
-- **SimuladorGrafos.csproj**: Archivo de proyecto que gestiona dependencias y configuración de compilación.
-- **bin/**: Carpeta donde se generan los ejecutables y archivos necesarios para correr la app.
-- **obj/**: Archivos temporales y de soporte para la compilación.
-- **Properties/**: Configuraciones adicionales, recursos y metadatos del proyecto.
-
----
-
-## ⚙️ Funcionalidades Principales
-
-- Creación y edición de grafos de manera visual 🖱️
-- Agregar, eliminar y modificar nodos y aristas 🔄
-- Visualización interactiva del grafo con soporte para diferentes algoritmos (BFS, DFS, etc.) 🔍
-- Análisis de conectividad, caminos y ciclos 🔗
-- Interfaz intuitiva y amigable para el usuario 👨‍🎓
-
----
-
-## 🚀 ¿Cómo ejecutar el proyecto?
-
-1. Clona el repositorio:
-   ```bash
-   git clone https://github.com/tuusuario/SimuladorGrafos.git
-   ```
-2. Abre `SimuladorGrafos.sln` en Visual Studio 🖥️
-3. Compila y ejecuta el proyecto (F5 o botón "Iniciar")
-
----
-
-## 🤝 Contribuciones
-
-¡Las contribuciones son bienvenidas! Si tienes ideas, mejoras o encuentras bugs, no dudes en abrir un issue o un pull request.
-
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la licencia MIT. Consulta el archivo LICENSE para más detalles.
-
----
-
-## 👨‍💻 Autor
-
-- Luis (Tu nombre aquí)
-
----
-
-¡Explora, aprende y diviértete simulando grafos! 🕸️✨
+MIT. Consulta el archivo [`LICENSE`](LICENSE).
