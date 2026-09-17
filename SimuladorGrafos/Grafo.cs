@@ -48,15 +48,29 @@ namespace SimuladorGrafos
             }
         }
 
-        /// Agrega arista entre nodos u y v (grafo no dirigido)
+        /// Agrega arista entre nodos u y v (grafo no dirigido).
+        /// - Es idempotente: agregar la misma arista dos veces no duplica la conexión.
+        /// - Soporta auto-bucles (u == v) sin duplicar la entrada en la lista de adyacencia.
         public void AgregarArista(int u, int v)
         {
             ValidarNodo(u, nameof(u));
             ValidarNodo(v, nameof(v));
 
-            // Grafo no dirigido: agregamos en ambas direcciones
-            listaAdj[u].Add(v);
-            listaAdj[v].Add(u);
+            if (u == v)
+            {
+                // Auto-bucle: una sola entrada es suficiente para representarlo.
+                // (Antes se agregaba dos veces al mismo tiempo: listaAdj[u].Add(v) y
+                // listaAdj[v].Add(u) apuntan a la misma lista cuando u == v.)
+                if (!listaAdj[u].Contains(v))
+                    listaAdj[u].Add(v);
+                return;
+            }
+
+            // Grafo no dirigido: agregamos en ambas direcciones, evitando duplicados
+            if (!listaAdj[u].Contains(v))
+                listaAdj[u].Add(v);
+            if (!listaAdj[v].Contains(u))
+                listaAdj[v].Add(u);
         }
 
         /// Retorna lista de vecinos de un nodo
