@@ -1,2 +1,13 @@
 # Ignorar carpetas de Visual Studio
 .vs/
+
+# Salidas de compilación de .NET
+[Bb]in/
+[Oo]bj/
+
+# Archivos de usuario específicos del IDE
+*.user
+*.suo
+
+# Resultados de pruebas
+[Tt]est[Rr]esult*/
